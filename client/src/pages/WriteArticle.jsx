@@ -1,5 +1,11 @@
 import { Edit, Sparkles } from 'lucide-react'
 import React, { useState } from 'react'
+import axios from 'axios'
+import { useAuth } from '@clerk/clerk-react'
+import toast from 'react-hot-toast';
+import Markdown from 'react-markdown';
+
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const WriteArticle = () => {
   const articleLength= [
@@ -10,8 +16,30 @@ const WriteArticle = () => {
 
   const  [ selectedLength, setSelectedLength] = useState(articleLength[0])
   const [ input, setInput] = useState('')
+  const[ loading, setLoading]= useState(false)
+  const [content, setContent]= useState('')
+
+  const {getToken} = useAuth()
   const onSubmitHandler= async(e)=> {
     e.preventDefault();
+    try{
+      setLoading(true)
+      const prompt = `Write an article about ${input} in ${selectedLength.text}. Start directly with the title as a # heading, no "Title:" prefix.`
+
+    const {data}=  await axios.post('/api/ai/generate-article', {prompt, length: selectedLength.length}, {
+      headers: { Authorization: `Bearer ${await getToken()}`}  
+    })
+    if(data.success){
+      setContent(data.content)
+    }else{
+      toast.error(data.message)
+    }
+
+    }catch(error){
+      toast.error(error.message)
+
+    }
+    setLoading(false)
 
   }
 
@@ -47,9 +75,14 @@ const WriteArticle = () => {
           ))}
          </div>
          <br/>
-         <button className='w-full flex justify-center items-center gap-2 bg-gradient-to-r 
+         <button disabled={loading}  className='w-full flex justify-center items-center gap-2 bg-gradient-to-r 
           from-[#226BFF] to-[#65ADFF]  text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
-          <Edit className='w-5'/>
+            {
+              loading ? <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span>
+              :<Edit className='w-5'/>
+            }
+
+          
           Generate article
          </button>
 
@@ -60,7 +93,8 @@ const WriteArticle = () => {
               <Edit className='w-5 h-5 text-[#4A7AFF]'/>
               <h1 className='text-xl font-semibold'> Generated article</h1>
             </div>
-            <div className='flex-1 flex justify-center items-center'>
+            {!content ? (
+              <div className='flex-1 flex justify-center items-center'>
               <div className='text-sm flex flex-col items-center gap-5 text-gray-400' >
                 <Edit className='w-9 h-9 '/>
                 <p> Enter a topic and click "Generate article" to get started</p>
@@ -68,6 +102,34 @@ const WriteArticle = () => {
               </div>
 
             </div>
+
+            ) : 
+            (
+              <div className='mt-3 h-full overflow-y-scroll text-sm text-slate-600  prose prose-sm max-w-none'>
+  
+                <div className='.reset-tw'>
+                  <Markdown
+                     components={{
+                         h1: ({children}) => <h1 className='text-2xl font-extrabold mt-2 mb-3 text-slate-900'>{children}</h1>,
+                         h2: ({children}) => <h2 className='text-base font-semibold mt-4 mb-2 text-slate-800'>{children}</h2>,
+                         h3: ({children}) => <h3 className='text-sm font-semibold mt-3 mb-1 text-slate-800'>{children}</h3>,
+                         p: ({children}) => <p className='mb-3 leading-relaxed text-sm text-slate-600'>{children}</p>,
+                         strong: ({children}) => <strong className='font-semibold text-slate-800'>{children}</strong>,
+                         ul: ({children}) => <ul className='list-disc pl-5 mb-3 space-y-1'>{children}</ul>,
+                         ol: ({children}) => <ol className='list-decimal pl-5 mb-3 space-y-1'>{children}</ol>,
+                         li: ({children}) => <li className='leading-relaxed text-sm text-slate-600'>{children}</li>,
+                         hr: () => null,
+                         em: ({children}) => <em className='italic text-slate-600'>{children}</em>,   
+                          }}>
+                         {content}
+                  </Markdown>
+                </div>
+                                                                                            
+
+              </div>
+
+            )}
+            
       </div>
             
     </div>

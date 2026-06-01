@@ -165,7 +165,7 @@ export const generateImage = async (req, res) => {
 export const removeImageBackground = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const {image} = req.file;
+    const image = req.file;
     const plan = req.plan;
 
     if (plan !== "premium") {
@@ -213,7 +213,7 @@ export const removeImageObject = async (req, res) => {
   try {
     const { userId } = req.auth();
     const { object } = req.body;
-    const {image} = req.file;
+    const image = req.file;
     const plan = req.plan;
 
     if (plan !== "premium") {
@@ -274,14 +274,24 @@ export const resumeReview = async (req, res) => {
     const dataBuffer= fs.readFileSync(resume.path)
     const pdfData = await pdf(dataBuffer)
 
-    const prompt= `Review the following resume and provide constructive feedback 
-    on its strengths, weaknesses, and areas for improvement. Resume content: \n\n${pdfData.text}`
+    const prompt= `You are an expert resume reviewer. Analyze the following resume in detail and provide:
+
+      1. Overall Impression
+      2. Strengths (with bullet points)
+      3. Weaknesses (with bullet points)  
+      4. Areas for Improvement (specific suggestions)
+      5. ATS (Applicant Tracking System) compatibility
+
+      Be specific, detailed and professional in your feedback.
+
+    Resume content: \n\n${pdfData.text}`
+
 
     const response = await AI.chat.completions.create({
         model: "gemini-3-flash-preview",
         messages: [ { role: "user", content: prompt } ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 2000,
     });
     const content= response.choices[0].message.content
 
